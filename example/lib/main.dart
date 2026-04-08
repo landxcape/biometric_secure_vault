@@ -34,12 +34,12 @@ class _ExampleHomeState extends State<ExampleHome> {
   Future<void> _checkAvailability() async {
     final availability = await _vault.checkAvailability();
     setState(() {
-      _status = availability.when(
-        available: () => 'Biometrics Available',
-        noHardware: () => 'No Biometric Hardware',
-        notEnrolled: () => 'Biometrics Not Enrolled',
-        unsupported: () => 'Platform Not Supported',
-      );
+      _status = switch (availability) {
+        BiometricAvailable() => 'Biometrics Available',
+        BiometricNoHardware() => 'No Biometric Hardware',
+        BiometricNotEnrolled() => 'Biometrics Not Enrolled',
+        BiometricUnsupported() => 'Platform Not Supported',
+      };
     });
   }
 
@@ -56,15 +56,16 @@ class _ExampleHomeState extends State<ExampleHome> {
       allowDevicePassword: _allowPin,
     );
 
-    result.when(
-      success: (_) => _showSnackBar('Secret saved securely!'),
-      userCanceled: () => _showSnackBar('Setup canceled'),
-      failure: (msg) => _showSnackBar('Error: $msg'),
-      lockout: () => _showSnackBar('Biometrics locked'),
-      permanentlyLockout: () => _showSnackBar('Permanently locked'),
-      biometricsChanged: () => _showSnackBar('Biometrics changed!'),
-      empty: () => _showSnackBar('Empty'),
-    );
+    final message = switch (result) {
+      VaultResultSuccess() => 'Secret saved securely!',
+      VaultResultUserCanceled() => 'Setup canceled',
+      VaultResultFailure(:final message) => 'Error: $message',
+      VaultResultLockout() => 'Biometrics locked',
+      VaultResultPermanentlyLockout() => 'Permanently locked',
+      VaultResultBiometricsChanged() => 'Biometrics changed!',
+      VaultResultEmpty() => 'Empty',
+    };
+    _showSnackBar(message);
   }
 
   Future<void> _readSecret() async {
@@ -74,17 +75,22 @@ class _ExampleHomeState extends State<ExampleHome> {
       allowDevicePassword: _allowPin,
     );
 
-    result.when(
-      success: (data) =>
-          _showDialog('Secret Retrieved', 'Your secret is: $data'),
-      userCanceled: () => _showSnackBar('Authentication canceled'),
-      empty: () => _showSnackBar('No secret found. Save one first.'),
-      biometricsChanged: () =>
-          _showSnackBar('Security Alert: Biometrics changed!'),
-      failure: (msg) => _showSnackBar('Error: $msg'),
-      lockout: () => _showSnackBar('Locked out'),
-      permanentlyLockout: () => _showSnackBar('Permanently locked'),
-    );
+    switch (result) {
+      case VaultResultSuccess(:final data):
+        _showDialog('Secret Retrieved', 'Your secret is: $data');
+      case VaultResultUserCanceled():
+        _showSnackBar('Authentication canceled');
+      case VaultResultEmpty():
+        _showSnackBar('No secret found. Save one first.');
+      case VaultResultBiometricsChanged():
+        _showSnackBar('Security Alert: Biometrics changed!');
+      case VaultResultFailure(:final message):
+        _showSnackBar('Error: $message');
+      case VaultResultLockout():
+        _showSnackBar('Locked out');
+      case VaultResultPermanentlyLockout():
+        _showSnackBar('Permanently locked');
+    }
   }
 
   void _showSnackBar(String msg) {

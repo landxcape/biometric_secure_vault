@@ -47,12 +47,16 @@ Add the FaceID usage description to your `Info.plist`:
 final vault = BiometricVaultImpl();
 final availability = await vault.checkAvailability();
 
-availability.when(
-  available: () => /* Hardware ready */,
-  noHardware: () => /* No biometric sensor */,
-  notEnrolled: () => /* No fingerprints/faces registered */,
-  unsupported: () => /* OS version too old or restricted */,
-);
+switch (availability) {
+  case BiometricAvailable():
+    /* Hardware ready */
+  case BiometricNoHardware():
+    /* No biometric sensor */
+  case BiometricNotEnrolled():
+    /* No fingerprints/faces registered */
+  case BiometricUnsupported():
+    /* OS version too old or restricted */
+}
 ```
 
 ### Writing a Secret
@@ -74,15 +78,22 @@ final result = await vault.read(
   promptMessage: 'Authenticate to log in',
 );
 
-result.when(
-  success: (token) => print('Got token: $token'),
-  biometricsChanged: () => print('Biometric set modified. Re-login required.'),
-  userCanceled: () => print('User dismissed prompt'),
-  lockout: () => print('Too many attempts. Locked out.'),
-  empty: () => print('No data found'),
-  failure: (error) => print('Error: $error'),
-  permanentlyLockout: () => print('Sensor permanently locked'),
-);
+switch (result) {
+  case VaultResultSuccess(:final data):
+    print('Got token: $data');
+  case VaultResultBiometricsChanged():
+    print('Biometric set modified. Re-login required.');
+  case VaultResultUserCanceled():
+    print('User dismissed prompt');
+  case VaultResultLockout():
+    print('Too many attempts. Locked out.');
+  case VaultResultEmpty():
+    print('No data found');
+  case VaultResultFailure(:final message):
+    print('Error: $message');
+  case VaultResultPermanentlyLockout():
+    print('Sensor permanently locked');
+}
 ```
 
 ### Monitoring Security Changes
@@ -98,7 +109,7 @@ if (await vault.hasBiometricsChanged()) {
 
 ## Result Handling
 
-The `VaultResult` class provides an exhaustive way to handle every platform edge case. Using `.when()` ensures you've accounted for user cancellations, hardware lockouts, and security set changes.
+The `VaultResult` class provides an exhaustive way to handle every platform edge case. Using Dart 3 pattern matching ensures you've accounted for user cancellations, hardware lockouts, and security set changes.
 
 ## Additional Information
 
