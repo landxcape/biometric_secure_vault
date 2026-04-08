@@ -1,18 +1,19 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:local_auth_android/local_auth_android.dart';
-import 'package:local_auth_darwin/local_auth_darwin.dart';
-import 'package:local_auth/error_codes.dart' as auth_error;
 
 import 'biometric_availability.dart';
 import 'biometric_vault.dart';
 import 'vault_result.dart';
 
+/// Default implementation of [BiometricVault] using local_auth and flutter_secure_storage.
 class BiometricVaultImpl implements BiometricVault {
   final LocalAuthentication _auth;
   final FlutterSecureStorage _secureStorage;
 
+  /// Creates a new [BiometricVaultImpl] instance.
+  ///
+  /// Optionally provide [auth] and [secureStorage] instances for testing.
   BiometricVaultImpl({
     LocalAuthentication? auth,
     FlutterSecureStorage? secureStorage,
@@ -23,21 +24,26 @@ class BiometricVaultImpl implements BiometricVault {
              iOptions: IOSOptions(
                accessibility: KeychainAccessibility.unlocked_this_device,
              ),
-             aOptions: AndroidOptions(encryptedSharedPreferences: true),
+             aOptions: AndroidOptions(),
            );
 
   @override
   Future<BiometricAvailability> checkAvailability() async {
     try {
       final isSupported = await _auth.isDeviceSupported();
-      if (!isSupported) return const BiometricAvailability.noHardware();
+      if (!isSupported) {
+        return const BiometricAvailability.noHardware();
+      }
 
       final canAuthenticate = await _auth.canCheckBiometrics;
-      if (!canAuthenticate) return const BiometricAvailability.unsupported();
+      if (!canAuthenticate) {
+        return const BiometricAvailability.unsupported();
+      }
 
       final enrolledBiometrics = await _auth.getAvailableBiometrics();
-      if (enrolledBiometrics.isEmpty)
+      if (enrolledBiometrics.isEmpty) {
         return const BiometricAvailability.notEnrolled();
+      }
 
       return const BiometricAvailability.available();
     } catch (e) {
@@ -86,7 +92,9 @@ class BiometricVaultImpl implements BiometricVault {
     bool allowDevicePassword = false,
   }) async {
     final exists = await containsKey(key: key);
-    if (!exists) return const VaultResult.empty();
+    if (!exists) {
+      return const VaultResult.empty();
+    }
 
     final authResult = await _authenticate(promptMessage, allowDevicePassword);
     return authResult.when(
@@ -118,7 +126,9 @@ class BiometricVaultImpl implements BiometricVault {
     final storedFingerprint = await _secureStorage.read(
       key: _biometricFingerprintKey,
     );
-    if (storedFingerprint == null) return false;
+    if (storedFingerprint == null) {
+      return false;
+    }
 
     final currentFingerprint = await _getBiometricFingerprint();
     return storedFingerprint != currentFingerprint;
@@ -151,17 +161,8 @@ class BiometricVaultImpl implements BiometricVault {
     try {
       final success = await _auth.authenticate(
         localizedReason: message,
-        options: AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: !allowDevicePassword,
-        ),
-        authMessages: [
-          const AndroidAuthMessages(
-            signInTitle: 'Biometric Authentication',
-            biometricHint: 'Verify your identity',
-          ),
-          const IOSAuthMessages(cancelButton: 'Cancel'),
-        ],
+        biometricOnly: !allowDevicePassword,
+        persistAcrossBackgrounding: true,
       );
 
       if (success) {
@@ -169,16 +170,20 @@ class BiometricVaultImpl implements BiometricVault {
       } else {
         return const VaultResult.userCanceled();
       }
+    } on LocalAuthException catch (e) {
+      return switch (e.code) {
+        LocalAuthExceptionCode.userCanceled => const VaultResult.userCanceled(),
+        LocalAuthExceptionCode.temporaryLockout => const VaultResult.lockout(),
+        LocalAuthExceptionCode.biometricLockout =>
+          const VaultResult.permanentlyLockout(),
+        LocalAuthExceptionCode.noBiometricsEnrolled =>
+          const VaultResult.failure('No biometrics enrolled'),
+        LocalAuthExceptionCode.noBiometricHardware => const VaultResult.failure(
+          'Biometrics not available',
+        ),
+        _ => VaultResult.failure(e.description ?? 'Authentication failed'),
+      };
     } on PlatformException catch (e) {
-      if (e.code == auth_error.notAvailable) {
-        return const VaultResult.failure('Biometrics not available');
-      } else if (e.code == auth_error.notEnrolled) {
-        return const VaultResult.failure('No biometrics enrolled');
-      } else if (e.code == auth_error.lockedOut) {
-        return const VaultResult.lockout();
-      } else if (e.code == auth_error.permanentlyLockedOut) {
-        return const VaultResult.permanentlyLockout();
-      }
       return VaultResult.failure(e.message ?? 'Authentication failed');
     } catch (e) {
       return VaultResult.failure(e.toString());
