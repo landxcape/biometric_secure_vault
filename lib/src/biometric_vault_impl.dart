@@ -61,28 +61,31 @@ class BiometricVaultImpl implements BiometricVault {
     bool allowDevicePassword = false,
   }) async {
     final authResult = await _authenticate(promptMessage, allowDevicePassword);
-    return authResult.when(
-      success: (_) async {
-        try {
-          await _secureStorage.write(key: key, value: value);
-          // Store current biometric fingerprint to detect changes later
-          final fingerprint = await _getBiometricFingerprint();
-          await _secureStorage.write(
-            key: _biometricFingerprintKey,
-            value: fingerprint,
-          );
-          return const VaultResult.success(null);
-        } catch (e) {
-          return VaultResult.failure(e.toString());
-        }
-      },
-      userCanceled: () => const VaultResult.userCanceled(),
-      lockout: () => const VaultResult.lockout(),
-      permanentlyLockout: () => const VaultResult.permanentlyLockout(),
-      biometricsChanged: () => const VaultResult.biometricsChanged(),
-      empty: () => const VaultResult.empty(),
-      failure: (msg) => VaultResult.failure(msg),
-    );
+
+    return switch (authResult) {
+      VaultResultSuccess() => await _writeSecret(key, value),
+      VaultResultUserCanceled() => const VaultResult.userCanceled(),
+      VaultResultLockout() => const VaultResult.lockout(),
+      VaultResultPermanentlyLockout() => const VaultResult.permanentlyLockout(),
+      VaultResultBiometricsChanged() => const VaultResult.biometricsChanged(),
+      VaultResultEmpty() => const VaultResult.empty(),
+      VaultResultFailure(:final message) => VaultResult.failure(message),
+    };
+  }
+
+  Future<VaultResult<void>> _writeSecret(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+      // Store current biometric fingerprint to detect changes later
+      final fingerprint = await _getBiometricFingerprint();
+      await _secureStorage.write(
+        key: _biometricFingerprintKey,
+        value: fingerprint,
+      );
+      return const VaultResult.success(null);
+    } catch (e) {
+      return VaultResult.failure(e.toString());
+    }
   }
 
   @override
@@ -97,28 +100,30 @@ class BiometricVaultImpl implements BiometricVault {
     }
 
     final authResult = await _authenticate(promptMessage, allowDevicePassword);
-    return authResult.when(
-      success: (_) async {
-        try {
-          final value = await _secureStorage.read(key: key);
-          return VaultResult.success(value);
-        } on PlatformException catch (e) {
-          if (e.code == 'LAErrorAuthenticationFailed' ||
-              e.code == 'VALogicError') {
-            return const VaultResult.biometricsChanged();
-          }
-          return VaultResult.failure(e.message ?? 'Read failed');
-        } catch (e) {
-          return VaultResult.failure(e.toString());
-        }
-      },
-      userCanceled: () => const VaultResult.userCanceled(),
-      lockout: () => const VaultResult.lockout(),
-      permanentlyLockout: () => const VaultResult.permanentlyLockout(),
-      biometricsChanged: () => const VaultResult.biometricsChanged(),
-      empty: () => const VaultResult.empty(),
-      failure: (msg) => VaultResult.failure(msg),
-    );
+
+    return switch (authResult) {
+      VaultResultSuccess() => await _readSecret(key),
+      VaultResultUserCanceled() => const VaultResult.userCanceled(),
+      VaultResultLockout() => const VaultResult.lockout(),
+      VaultResultPermanentlyLockout() => const VaultResult.permanentlyLockout(),
+      VaultResultBiometricsChanged() => const VaultResult.biometricsChanged(),
+      VaultResultEmpty() => const VaultResult.empty(),
+      VaultResultFailure(:final message) => VaultResult.failure(message),
+    };
+  }
+
+  Future<VaultResult<String?>> _readSecret(String key) async {
+    try {
+      final value = await _secureStorage.read(key: key);
+      return VaultResult.success(value);
+    } on PlatformException catch (e) {
+      if (e.code == 'LAErrorAuthenticationFailed' || e.code == 'VALogicError') {
+        return const VaultResult.biometricsChanged();
+      }
+      return VaultResult.failure(e.message ?? 'Read failed');
+    } catch (e) {
+      return VaultResult.failure(e.toString());
+    }
   }
 
   @override
@@ -170,21 +175,16 @@ class BiometricVaultImpl implements BiometricVault {
       } else {
         return const VaultResult.userCanceled();
       }
-    } on LocalAuthException catch (e) {
-      return switch (e.code) {
-        LocalAuthExceptionCode.userCanceled => const VaultResult.userCanceled(),
-        LocalAuthExceptionCode.temporaryLockout => const VaultResult.lockout(),
-        LocalAuthExceptionCode.biometricLockout =>
-          const VaultResult.permanentlyLockout(),
-        LocalAuthExceptionCode.noBiometricsEnrolled =>
-          const VaultResult.failure('No biometrics enrolled'),
-        LocalAuthExceptionCode.noBiometricHardware => const VaultResult.failure(
-          'Biometrics not available',
-        ),
-        _ => VaultResult.failure(e.description ?? 'Authentication failed'),
-      };
     } on PlatformException catch (e) {
-      return VaultResult.failure(e.message ?? 'Authentication failed');
+      // Handle known error codes from local_auth
+      return switch (e.code) {
+        'NotAvailable' => const VaultResult.failure('Biometrics not available'),
+        'NotEnrolled' => const VaultResult.failure('No biometrics enrolled'),
+        'LockedOut' => const VaultResult.lockout(),
+        'PermanentlyLockedOut' => const VaultResult.permanentlyLockout(),
+        'UserCanceled' || 'SystemCancel' => const VaultResult.userCanceled(),
+        _ => VaultResult.failure(e.message ?? 'Authentication failed'),
+      };
     } catch (e) {
       return VaultResult.failure(e.toString());
     }

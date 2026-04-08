@@ -1,3 +1,6 @@
+/// Secure key-value storage gated by biometric authentication with change detection and PIN fallback.
+library;
+
 export 'src/biometric_availability.dart';
 export 'src/biometric_vault.dart';
 export 'src/biometric_vault_impl.dart';

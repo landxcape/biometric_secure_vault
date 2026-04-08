@@ -7,6 +7,9 @@ import 'vault_result.dart';
 /// and ensures that data can only be read or written after a successful biometric
 /// challenge (FaceID, Fingerprint, or Device Passcode).
 abstract class BiometricVault {
+  /// Base constructor for [BiometricVault].
+  const BiometricVault();
+
   /// Checks the current status of biometric hardware and enrollment on the device.
   ///
   /// Returns a [BiometricAvailability] union representing the state.
