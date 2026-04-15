@@ -1,4 +1,5 @@
 import 'biometric_availability.dart';
+import 'biometric_vault_impl.dart';
 import 'vault_result.dart';
 
 /// A secure key-value store that gates access behind biometric authentication.
@@ -7,8 +8,8 @@ import 'vault_result.dart';
 /// and ensures that data can only be read or written after a successful biometric
 /// challenge (FaceID, Fingerprint, or Device Passcode).
 abstract class BiometricVault {
-  /// Base constructor for [BiometricVault].
-  const BiometricVault();
+  /// Creates a new [BiometricVault] instance.
+  factory BiometricVault() = BiometricVaultImpl;
 
   /// Checks the current status of biometric hardware and enrollment on the device.
   ///

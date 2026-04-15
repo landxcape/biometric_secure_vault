@@ -26,7 +26,7 @@ class ExampleHome extends StatefulWidget {
 }
 
 class _ExampleHomeState extends State<ExampleHome> {
-  final BiometricVault _vault = BiometricVaultImpl();
+  final BiometricVault _vault = BiometricVault();
   final TextEditingController _controller = TextEditingController();
   String _status = 'Check availability to start';
   bool _allowPin = false;

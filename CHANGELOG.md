@@ -1,3 +1,10 @@
+# 1.2.0
+
+* Added factory constructor to `BiometricVault` interface.
+  * Allows users to instantiate the vault using `BiometricVault()` instead of `BiometricVaultImpl()`.
+  * Simplifies API surface and improves encapsulation.
+* Internal cleanup and documentation updates.
+
 # 1.1.0
 
 * **Breaking Change**: Migrated from `freezed` to native Dart 3 sealed classes.
