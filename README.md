@@ -44,7 +44,7 @@ Add the FaceID usage description to your `Info.plist`:
 ### Check Device Capabilities
 
 ```dart
-final vault = BiometricVaultImpl();
+final vault = BiometricVault();
 final availability = await vault.checkAvailability();
 
 switch (availability) {

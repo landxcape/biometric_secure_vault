@@ -1,3 +1,7 @@
+# 1.2.1
+
+* Updated documentation to reflect the new `BiometricVault()` factory constructor.
+
 # 1.2.0
 
 * Added factory constructor to `BiometricVault` interface.
