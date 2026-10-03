@@ -1,3 +1,9 @@
+# 1.2.2
+
+* Updated `flutter_secure_storage` dependency constraint to support v11.x (`>=10.0.0 <12.0.0`).
+* Added official pub.dev `topics` for improved package categorization.
+* Added `.pubignore` to prevent bundling build artifacts and caches.
+
 # 1.2.1
 
 * Updated documentation to reflect the new `BiometricVault()` factory constructor.
