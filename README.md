@@ -1,21 +1,23 @@
 # Biometric Secure Vault
 
-Secure key-value storage for Flutter that gates sensitive data access behind biometric authentication (FaceID, Fingerprint, or Iris).
+Key-value storage for Flutter that gates read and write operations behind biometric authentication prompts (FaceID, Fingerprint, or Iris).
 
 ## Overview
 
-Storing sensitive data like authentication tokens or private keys in standard storage is a security risk. This package ensures that data stored in the platform's secure hardware (Keychain on iOS, Keystore on Android) is only released after a successful biometric challenge.
+This package combines `local_auth` for device biometric challenges with `flutter_secure_storage` for encrypted persistence (Keychain on iOS, KeyStore on Android). Operations verify authentication before reading or writing data and return sealed result types for platform status and lockout handling.
 
-### Key Features
+### Features
 
-*   **Hardware-Gated Access:** Cryptographically tie data retrieval to a successful biometric scan.
-*   **Change Detection:** Detect if the device's biometric set has been modified (e.g., a new fingerprint added) since the last write.
-*   **Passcode Fallback:** Optional support for device PIN/Pattern if biometrics are unavailable.
-*   **Type-Safe Results:** Uses sealed classes to handle success, cancellation, lockouts, and security events without boilerplate.
+* **Biometric Authentication:** Prompts for biometric verification before read and write operations.
+* **Passcode Fallback:** Optional fallback to device PIN, pattern, or passcode when biometrics are unavailable.
+* **Availability Checks:** Inspect whether biometric hardware is present, supported, and enrolled.
+* **Biometric State Checks:** Compare enrolled biometric types against stored state from previous writes.
+* **Sealed Result Types:** Pattern-matchable `VaultResult` types representing success, cancellations, lockouts, empty values, and failures.
 
 ## Setup
 
 ### Android
+
 Add the biometric permission to your `AndroidManifest.xml`:
 
 ```xml
@@ -32,6 +34,7 @@ class MainActivity: FlutterFragmentActivity() {
 ```
 
 ### iOS
+
 Add the FaceID usage description to your `Info.plist`:
 
 ```xml
@@ -41,76 +44,90 @@ Add the FaceID usage description to your `Info.plist`:
 
 ## Usage
 
-### Check Device Capabilities
+### Initialize
 
 ```dart
 final vault = BiometricVault();
+```
+
+### Check Device Capabilities
+
+```dart
 final availability = await vault.checkAvailability();
 
 switch (availability) {
   case BiometricAvailable():
-    /* Hardware ready */
+    // Hardware is present and biometrics are enrolled
   case BiometricNoHardware():
-    /* No biometric sensor */
+    // No biometric sensor found
   case BiometricNotEnrolled():
-    /* No fingerprints/faces registered */
+    // Sensor found, but no fingerprints or faces are enrolled
   case BiometricUnsupported():
-    /* OS version too old or restricted */
+    // Device or OS does not support biometric checks
 }
 ```
 
-### Writing a Secret
+### Writing Data
 
 ```dart
-await vault.write(
+final result = await vault.write(
   key: 'session_token',
   value: 'xyz_123_auth',
-  promptMessage: 'Authenticate to secure your session',
-  allowDevicePassword: true, // Allow PIN/Pattern fallback
+  promptMessage: 'Authenticate to save your session',
+  allowDevicePassword: true, // Allow PIN/Passcode fallback
 );
+
+if (result case VaultResultSuccess()) {
+  print('Saved successfully');
+}
 ```
 
-### Reading a Secret
+### Reading Data
 
 ```dart
 final result = await vault.read(
   key: 'session_token',
-  promptMessage: 'Authenticate to log in',
+  promptMessage: 'Authenticate to access your session',
 );
 
 switch (result) {
   case VaultResultSuccess(:final data):
-    print('Got token: $data');
-  case VaultResultBiometricsChanged():
-    print('Biometric set modified. Re-login required.');
-  case VaultResultUserCanceled():
-    print('User dismissed prompt');
-  case VaultResultLockout():
-    print('Too many attempts. Locked out.');
+    print('Retrieved: $data');
   case VaultResultEmpty():
-    print('No data found');
-  case VaultResultFailure(:final message):
-    print('Error: $message');
+    print('Key not found');
+  case VaultResultUserCanceled():
+    print('Authentication dismissed by user');
+  case VaultResultLockout():
+    print('Temporarily locked out due to failed attempts');
   case VaultResultPermanentlyLockout():
-    print('Sensor permanently locked');
+    print('Permanently locked out; strong authentication required');
+  case VaultResultBiometricsChanged():
+    print('Biometric state changed');
+  case VaultResultFailure(:final message):
+    print('Operation failed: $message');
 }
 ```
 
-### Monitoring Security Changes
-
-Use `hasBiometricsChanged()` to detect if new fingerprints or faces were added to the device since your last write. This is a critical check for high-security applications to prevent unauthorized entry via a shared device.
+### Checking Biometric Availability Changes
 
 ```dart
 if (await vault.hasBiometricsChanged()) {
-  // Clear the vault and force a password login
+  // Enrolled biometric types differ from when data was last written
   await vault.clear();
 }
 ```
 
+### Deletion and Clearing
+
+```dart
+await vault.delete(key: 'session_token');
+await vault.clear();
+```
+
 ## Result Handling
 
-The `VaultResult` class provides an exhaustive way to handle every platform edge case. Using Dart 3 pattern matching ensures you've accounted for user cancellations, hardware lockouts, and security set changes.
+All read and write operations return a sealed `VaultResult<T>` union. Dart 3 pattern matching provides exhaustive handling of success, user cancellations, temporary/permanent lockouts, and storage errors without throwing uncaught platform exceptions.
 
-## Additional Information
+## License
 
-For issues, feature requests, or contributions, please visit the [GitHub Repository](https://github.com/landxcape/biometric_secure_vault).
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.

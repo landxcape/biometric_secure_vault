@@ -1,3 +1,8 @@
+# 1.2.3
+
+* Refactored documentation and package description to factually describe the integration of `local_auth` biometric prompts and `flutter_secure_storage` persistence.
+* Clarified biometric availability and change-checking behavior.
+
 # 1.2.2
 
 * Updated `flutter_secure_storage` dependency constraint to support v11.x (`>=10.0.0 <12.0.0`).
