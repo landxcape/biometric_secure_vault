@@ -1,3 +1,7 @@
+# 1.2.4
+
+* Docs: Added package badges and standardized CLI installation instructions.
+
 # 1.2.3
 
 * Refactored documentation and package description to factually describe the integration of `local_auth` biometric prompts and `flutter_secure_storage` persistence.
