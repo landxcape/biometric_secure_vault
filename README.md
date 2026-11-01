@@ -2,6 +2,18 @@
 
 Key-value storage for Flutter that gates read and write operations behind biometric authentication prompts (FaceID, Fingerprint, or Iris).
 
+[![pub package](https://img.shields.io/pub/v/biometric_secure_vault.svg)](https://pub.dev/packages/biometric_secure_vault)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-flutter%20%7C%20android%20%7C%20ios-blue)](https://pub.dev/packages/biometric_secure_vault)
+
+## Installation
+
+Add the package to your project:
+
+```bash
+flutter pub add biometric_secure_vault
+```
+
 ## Overview
 
 This package combines `local_auth` for device biometric challenges with `flutter_secure_storage` for encrypted persistence (Keychain on iOS, KeyStore on Android). Operations verify authentication before reading or writing data and return sealed result types for platform status and lockout handling.
