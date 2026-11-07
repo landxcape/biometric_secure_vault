@@ -5,6 +5,9 @@ Key-value storage for Flutter that gates read and write operations behind biomet
 [![pub package](https://img.shields.io/pub/v/biometric_secure_vault.svg)](https://pub.dev/packages/biometric_secure_vault)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-flutter%20%7C%20android%20%7C%20ios-blue)](https://pub.dev/packages/biometric_secure_vault)
+[![Interactive Workbench](https://img.shields.io/badge/workbench-interactive%20lab-0284C7.svg)](https://shakyapurna.com.np/lab/biometric_secure_vault)
+
+An [interactive workbench](https://shakyapurna.com.np/lab/biometric_secure_vault) is available to explore architecture contracts and API definitions.
 
 ## Installation
 
